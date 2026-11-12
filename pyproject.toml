@@ -1,0 +1,16 @@
+[project]
+name = "fly-in"
+version = "0.1.0"
+description = "Drone routing simulation (42 fly-in)"
+requires-python = ">=3.10"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "flake8",
+    "mypy",
+    "pytest",
+]
+
+[tool.mypy]
+exclude = ["^\\.venv/"]
