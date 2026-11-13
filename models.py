@@ -3,15 +3,17 @@ from enum import Enum
 
 
 class ZoneType(Enum):
-    NORMAL = "NORMAL"
-    BLOCKED = "BLOCKED"
-    RESTRICTED = "RESTRICTED"
-    PRIORITY = "PRIORITY"
+    NORMAL = "normal"
+    BLOCKED = "blocked"
+    RESTRICTED = "restricted"
+    PRIORITY = "priority"
+
 
 class Role(Enum):
     START = "start"
     END = "end"
     HUB = "hub"
+
 
 @dataclass(frozen=True, slots=True)
 class Zone:
@@ -23,25 +25,29 @@ class Zone:
     role: Role = Role.HUB
 
     def __post_init__(self) -> None:
-        if self.max_drones < 1:
-            raise ValueError("max_drones must be positive")
+        if not self.name.strip():
+            raise ValueError("zone name must not be empty")
         if "-" in self.name:
-            #nao sei ingles ;-;
-            raise ValueError("")
+            raise ValueError("zone names cannot contain dashes")
+        if self.role not in (Role.START, Role.END) and self.max_drones < 1:
+            raise ValueError("max_drones must be positive")
 
     @property
     def capacity(self) -> int | None:
-        if self.role in [Role.START, Role.END]:
+        if self.role in (Role.START, Role.END):
             return None
         return self.max_drones
 
     @property
-    def entry_cost(self) -> None:
-        raise NotImplementedError()
+    def entry_cost(self) -> int:
+        if self.zone_type == ZoneType.RESTRICTED:
+            return 2
+        return 1
 
     @property
     def is_blocked(self) -> bool:
-        raise NotImplementedError()
+        return self.zone_type == ZoneType.BLOCKED
+
 
 @dataclass
 class Connection:
@@ -53,8 +59,10 @@ class Connection:
     def other(self, zone: Zone) -> Zone:
         raise NotImplementedError()
 
-    def connects(self, a, b) -> bool:
-        raise NotImplementedError()
+    def connects(self, a: Zone, b: Zone) -> None:
+        self.zone_a = a
+        self.zone_b = b
+        self.key = f"{a}-{b}"
 
 
 @dataclass(eq=False)
