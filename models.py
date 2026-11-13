@@ -49,20 +49,28 @@ class Zone:
         return self.zone_type == ZoneType.BLOCKED
 
 
-@dataclass
+@dataclass(eq=False)
 class Connection:
     zone_a: Zone
     zone_b: Zone
-    key: str
     max_link_capacity: int = 1
 
-    def other(self, zone: Zone) -> Zone:
-        raise NotImplementedError()
+    @property
+    def key(self) -> str:
+        a, b = sorted((self.zone_a.name, self.zone_b.name))
+        return f"{a}-{b}"
 
-    def connects(self, a: Zone, b: Zone) -> None:
-        self.zone_a = a
-        self.zone_b = b
-        self.key = f"{a}-{b}"
+    @property
+    def pair(self) -> frozenset[str]:
+        return frozenset((self.zone_a.name, self.zone_b.name))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Connection):
+            return NotImplemented
+        return self.pair == other.pair
+
+    def __hash__(self) -> int:
+        return hash(self.pair)
 
 
 @dataclass(eq=False)
