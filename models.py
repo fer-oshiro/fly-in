@@ -61,6 +61,12 @@ class Connection:
     zone_b: Zone
     max_link_capacity: int = 1
 
+    def __post_init__(self) -> None:
+        if self.zone_a.name == self.zone_b.name:
+            raise ValueError("a connection must link two different zones")
+        if self.max_link_capacity < 1:
+            raise ValueError("max_link_capacity must be positive")
+
     @property
     def key(self) -> str:
         a, b = sorted((self.zone_a.name, self.zone_b.name))
@@ -114,9 +120,61 @@ class Map:
     nb_drones: int = 0
     zones: dict[str, Zone] = field(default_factory=dict)
     connections: list[Connection] = field(default_factory=list)
-    adjacency: dict[Zone, list[Connection]] = field(default_factory=dict)
+    adjacency: dict[str, list[Connection]] = field(default_factory=dict)
     _connections_by_pair: dict[frozenset[str], Connection] = field(
         default_factory=dict
     )
     start: Zone | None = None
     end: Zone | None = None
+
+    def add_zone(self, zone: Zone) -> Zone:
+        if zone.name in self.zones:
+            raise ValueError(f"duplicate zone '{zone.name}'")
+        if zone.role == Role.START:
+            if self.start is not None:
+                raise ValueError("map already has a start zone")
+            self.start = zone
+        elif zone.role == Role.END:
+            if self.end is not None:
+                raise ValueError("map already has an end zone")
+            self.end = zone
+        self.zones[zone.name] = zone
+        self.adjacency[zone.name] = []
+        return zone
+
+    def get_zone(self, name: str) -> Zone:
+        try:
+            return self.zones[name]
+        except KeyError:
+            raise KeyError(f"unknown zone '{name}'") from None
+
+    def add_connection(self, connection: Connection) -> Connection:
+        endpoints = (connection.zone_a, connection.zone_b)
+        for zone in endpoints:
+            if self.zones.get(zone.name) is None:
+                raise ValueError(f"unknown zone '{zone.name}' in connection")
+        if connection.pair in self._connections_by_pair:
+            raise ValueError(f"duplicate connection '{connection.key}'")
+        self.connections.append(connection)
+        self._connections_by_pair[connection.pair] = connection
+        for zone in endpoints:
+            self.adjacency[zone.name].append(connection)
+        return connection
+
+    def neighbors(self, name: str) -> list[Zone]:
+        zone = self.get_zone(name)
+        result: list[Zone] = []
+        for connection in self.adjacency[zone.name]:
+            other = (
+                connection.zone_b
+                if connection.zone_a.name == zone.name
+                else connection.zone_a
+            )
+            if not other.is_blocked:
+                result.append(other)
+        return result
+
+    def connection_between(
+        self, name_a: str, name_b: str
+    ) -> Connection | None:
+        return self._connections_by_pair.get(frozenset((name_a, name_b)))
