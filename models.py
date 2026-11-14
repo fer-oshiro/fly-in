@@ -15,6 +15,12 @@ class Role(Enum):
     HUB = "hub"
 
 
+class DroneState(Enum):
+    WAITING = "waiting"
+    IN_TRANSIT = "in_transit"
+    DELIVERED = "delivered"
+
+
 @dataclass(frozen=True, slots=True)
 class Zone:
     name: str
@@ -71,6 +77,36 @@ class Connection:
 
     def __hash__(self) -> int:
         return hash(self.pair)
+
+
+@dataclass(eq=False)
+class Drone:
+    drone_id: int
+    state: DroneState = DroneState.WAITING
+    zone: Zone | None = None
+    connection: Connection | None = None
+    destination: Zone | None = None
+    turns_left: int = 0
+    path: list[Zone] = field(default_factory=list)
+    path_index: int = 0
+
+    def __post_init__(self) -> None:
+        if self.drone_id < 1:
+            raise ValueError("drone id must be positive")
+
+    @property
+    def name(self) -> str:
+        return f"D{self.drone_id}"
+
+    @property
+    def next_zone(self) -> Zone | None:
+        if self.path_index + 1 >= len(self.path):
+            return None
+        return self.path[self.path_index + 1]
+
+    @property
+    def is_delivered(self) -> bool:
+        return self.state == DroneState.DELIVERED
 
 
 @dataclass(eq=False)
