@@ -171,7 +171,7 @@ class Map:
                 else connection.zone_a
             )
             if not other.is_blocked:
-                result.append(other)
+                result.append(self.zones[other.name])
         return result
 
     def connection_between(
